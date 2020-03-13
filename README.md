@@ -6,4 +6,4 @@ Implemented in Racket as a learning exercise.
 
 ## Compile
 
-    raco exe --gui draw.rkt
+    raco exe --gui drawpad.rkt
