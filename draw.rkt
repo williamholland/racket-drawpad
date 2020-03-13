@@ -1,44 +1,38 @@
 #lang racket/gui
 
-; Make some pens and brushes
-(define no-pen (make-object pen% "BLACK" 1 'transparent))
-(define no-brush (make-object brush% "BLACK" 'transparent))
-(define blue-brush (make-object brush% "BLUE" 'solid))
-(define yellow-brush (make-object brush% "YELLOW" 'solid))
-(define red-pen (make-object pen% "RED" 2 'solid))
+(struct coord (x y))
 
-; this draws a circle on the canvas when the mouse is down
-(define (draw-circle dc x y)
-  (let ((width 4)
-        (height 4))
-    (send dc set-pen no-pen) ; outline of shape
-    (send dc set-brush blue-brush)
-    (send dc draw-ellipse (- x (/ width 2)) (- y (/ height 2)) width height)))
+(define (event->coord event)
+   (coord (send event get-x) (send event get-y)))
 
 (define frame (new frame% [label "Drawing"]
-                   [width 300]
-                   [height 300]))
+                   [min-width 300]
+                   [min-height 300]))
 
 ;TODO replace with a status bar
 (define msg (new message% [parent frame]
-                          [label "No events so far..."]))
+                          [label "Ready."]))
 
 (define my-canvas%
   (class canvas%
 
-    (define draw-state #f)
+    ; #f when mouse is not down, otherwise stores the most recent previous coord of the pen
+    (define drawing-state #f)
 
     ; mouse events
     (define/override (on-event event)
+      (when (coord? drawing-state)
+        (let ((current-coord (event->coord event)))
+          (send (send this get-dc)
+                draw-line
+                (coord-x drawing-state) (coord-y drawing-state)
+                (coord-x current-coord) (coord-y current-coord))
+          (set! drawing-state current-coord)))
       (let ((event-type (send event get-event-type)))
         (cond ((equal? event-type 'left-down)
-               (set! draw-state #t))
+                 (set! drawing-state (event->coord event)))
               ((equal? event-type 'left-up)
-               (set! draw-state #f)))
-        (when draw-state
-          (let ((mouse-x (send event get-x))
-                (mouse-y (send event get-y)))
-            (draw-circle (send this get-dc) mouse-x mouse-y)))))
+               (set! drawing-state #f)))))
 
     ; keyboard events
     (define/override (on-char event)
