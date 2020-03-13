@@ -69,6 +69,10 @@
     (field (pen default-pen))
     (field (offset-coord (coord 0 0)))
 
+    (define/public (clear-lines)
+      (set! lines '())
+      (send this refresh))
+
     (define/private (draw-lines)
       (let ((dc (send this get-dc)))
         (for ([l lines])
@@ -178,7 +182,7 @@
   [label "&New"]
   [parent file-menu]
   [callback (λ (m event)
-              (send canvas refresh))])
+              (send canvas clear-lines))])
 
 (new menu-item%
   [label "E&xit"]
