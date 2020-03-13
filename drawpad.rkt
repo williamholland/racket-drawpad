@@ -61,6 +61,11 @@
       (let ((dc (send this get-dc)))
         (for ([l lines]) (send l draw dc))))
 
+    (define/public (undo)
+      (set! lines (cdr lines))
+                 (send this refresh)
+                 (draw-lines))
+
     ; mouse events
     (define/override (on-event event)
       (when (not (equal? #f current-line))
@@ -85,7 +90,9 @@
     (define/override (on-char event)
       (when (send event get-control-down)
         (let ((key-code (send event get-key-code)))
-          (cond ((equal? key-code #\=)
+          (cond ((equal? key-code #\z)
+                 (undo))
+                ((equal? key-code #\=)
                  (set! pen (new pen%
                                 [color (send pen get-color)]
                                 [width (+ (send pen get-width) 1)]))
@@ -129,6 +136,17 @@
   [parent file-menu]
   [callback (λ (m event)
               (send frame show #f))])
+
+(define edit-menu
+  (new menu%
+    [label "&Edit"]
+    [parent menu-bar]))
+
+(new menu-item%
+  [label "Undo (Ctrl+Z)"]
+  [parent edit-menu]
+  [callback (λ (m event)
+              (send canvas undo))])
 
 ; Show the frame
 (send frame show #t)
