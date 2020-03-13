@@ -12,12 +12,20 @@
  #\8 (make-color #x82 #x82 #x82) ; grey
  #\9 (make-color #x00 #x00 #x00))) ; black
 
-(define default-pen (new pen% [color "BLACK"] [width 1]))
+(define default-pen (new pen% [color "BLACK"] [width 4]))
 
 (struct coord (x y))
 
 (define (event->coord event)
    (coord (send event get-x) (send event get-y)))
+
+(define (coord-add c1 c2)
+  (coord (+ (coord-x c1) (coord-x c2))
+         (+ (coord-y c1) (coord-y c2))))
+
+(define (coord-subtract c1 c2)
+  (coord (- (coord-x c1) (coord-x c2))
+         (- (coord-y c1) (coord-y c2))))
 
 (define line%
   (class object%
@@ -31,14 +39,16 @@
     (define/public (add-coord coord)
       (set! coords (cons coord coords)))
 
-    (define/public (draw dc)
+    (define/public (draw dc offset-coord)
+      (send dc set-pen pen)
       (foldl (λ (coord1 coord2)
-               (send dc set-pen pen)
-               (send dc
-                     draw-line
-                     (coord-x coord1) (coord-y coord1)
-                     (coord-x coord2) (coord-y coord2))
-               coord1) (car coords) coords))
+               (let ((ocoord1 (coord-add offset-coord coord1))
+                     (ocoord2 (coord-add offset-coord coord2)))
+                 (send dc
+                       draw-line
+                       (coord-x ocoord1) (coord-y ocoord1)
+                       (coord-x ocoord2) (coord-y ocoord2)))
+                 coord1) (car coords) coords))
 
     (super-new)))
 
@@ -54,37 +64,76 @@
 
     ; #f when mouse is not down, otherwise stores the current line
     (field (current-line #f))
+    (field (dragging #f))
     (field (lines '()))
     (field (pen default-pen))
+    (field (offset-coord (coord 0 0)))
 
     (define/private (draw-lines)
       (let ((dc (send this get-dc)))
-        (for ([l lines]) (send l draw dc))))
+        (for ([l lines])
+          (send l draw dc offset-coord))))
 
     (define/public (undo)
       (set! lines (cdr lines))
                  (send this refresh)
                  (draw-lines))
 
+    (define/private (screen-coord-to-absolute coord)
+      (coord-subtract coord offset-coord))
+
+    (define/private (absolute-to-screen-coord coord)
+      (coord-add coord offset-coord))
+
+    (define/private (on-drag event)
+      (set! offset-coord
+            (coord-add offset-coord
+                       (coord-subtract (event->coord event)
+                                       dragging)))
+      (send this refresh)
+      (draw-lines)
+      (set! dragging (event->coord event)))
+
+    (define/private (on-draw event)
+      (let* ([current-coord (event->coord event)]
+             [current-adjusted (screen-coord-to-absolute current-coord)]
+             [previous-coord (send current-line last-coord)]
+             [previous-adjusted (absolute-to-screen-coord previous-coord)])
+        (send (send this get-dc)
+              draw-line
+              (coord-x previous-adjusted) (coord-y previous-adjusted)
+              (coord-x current-coord) (coord-y current-coord))
+        (send current-line add-coord  current-adjusted)))
+
+    ; when mouse button is clicked we go to dragging or drawing depending on if ctrl is down
+    (define/private (on-mouse-down event)
+      (cond ((send event get-control-down)
+             (set! dragging (event->coord event))
+             (send frame set-status-text "Dragging..."))
+            (else
+             (set! current-line (new line% [pen pen]))
+             (send current-line add-coord (screen-coord-to-absolute (event->coord event)))
+             (send frame set-status-text "Drawing..."))))
+
+    ; save any line drawn and reset all the state
+    (define/private (on-mouse-up event)
+      (when current-line
+        (set! lines (cons current-line lines)))
+      (set! current-line #f)
+      (set! dragging #f)
+      (send frame set-status-text "Ready."))
+
     ; mouse events
     (define/override (on-event event)
-      (when (not (equal? #f current-line))
-        (let ((current-coord (event->coord event))
-              (previous-coord (send current-line last-coord)))
-          (send (send this get-dc)
-                draw-line
-                (coord-x previous-coord) (coord-y previous-coord)
-                (coord-x current-coord) (coord-y current-coord))
-          (send current-line add-coord current-coord)))
+      (cond ((coord? dragging)
+             (on-drag event))
+            (current-line
+             (on-draw event)))
       (let ((event-type (send event get-event-type)))
         (cond ((equal? event-type 'left-down)
-                 (set! current-line (new line% [pen pen]))
-                 (send current-line add-coord (event->coord event))
-                 (send frame set-status-text "Drawing..."))
+               (on-mouse-down event))
               ((equal? event-type 'left-up)
-               (set! lines (cons current-line lines))
-               (send frame set-status-text "Ready.")
-               (set! current-line #f)))))
+               (on-mouse-up event)))))
 
     ; keyboard events
     (define/override (on-char event)
