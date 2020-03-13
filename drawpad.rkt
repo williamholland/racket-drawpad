@@ -12,12 +12,35 @@
  #\8 (make-color #x82 #x82 #x82) ; grey
  #\9 (make-color #x00 #x00 #x00))) ; black
 
+(define default-pen (new pen% [color "BLACK"] [width 1]))
+
 (struct coord (x y))
 
 (define (event->coord event)
    (coord (send event get-x) (send event get-y)))
 
-(define pen (new pen% [color "BLACK"] [width 1]))
+(define line%
+  (class object%
+
+    (init-field [coords '()]
+                [pen default-pen])
+    
+    (define/public (last-coord)
+      (car coords))
+    
+    (define/public (add-coord coord)
+      (set! coords (cons coord coords)))
+
+    (define/public (draw dc)
+      (foldl (λ (coord1 coord2)
+               (send dc set-pen pen)
+               (send dc
+                     draw-line
+                     (coord-x coord1) (coord-y coord1)
+                     (coord-x coord2) (coord-y coord2))
+               coord1) (car coords) coords))
+
+    (super-new)))
 
 (define frame (new frame% [label "Drawpad"]
                    [min-width 300]
@@ -29,25 +52,34 @@
 (define my-canvas%
   (class canvas%
 
-    ; #f when mouse is not down, otherwise stores the most recent previous coord of the pen
-    (field (drawing-state #f))
+    ; #f when mouse is not down, otherwise stores the current line
+    (field (current-line #f))
+    (field (lines '()))
+    (field (pen default-pen))
+
+    (define/private (draw-lines)
+      (let ((dc (send this get-dc)))
+        (for ([l lines]) (send l draw dc))))
 
     ; mouse events
     (define/override (on-event event)
-      (when (coord? drawing-state)
-        (let ((current-coord (event->coord event)))
+      (when (not (equal? #f current-line))
+        (let ((current-coord (event->coord event))
+              (previous-coord (send current-line last-coord)))
           (send (send this get-dc)
                 draw-line
-                (coord-x drawing-state) (coord-y drawing-state)
+                (coord-x previous-coord) (coord-y previous-coord)
                 (coord-x current-coord) (coord-y current-coord))
-          (set! drawing-state current-coord)))
+          (send current-line add-coord current-coord)))
       (let ((event-type (send event get-event-type)))
         (cond ((equal? event-type 'left-down)
-                 (set! drawing-state (event->coord event))
+                 (set! current-line (new line% [pen pen]))
+                 (send current-line add-coord (event->coord event))
                  (send frame set-status-text "Drawing..."))
               ((equal? event-type 'left-up)
+               (set! lines (cons current-line lines))
                (send frame set-status-text "Ready.")
-               (set! drawing-state #f)))))
+               (set! current-line #f)))))
 
     ; keyboard events
     (define/override (on-char event)
@@ -69,12 +101,15 @@
                               [width (send pen get-width)]))
                  (send frame set-status-text "Pen colour changed."))))
         (send (send canvas get-dc) set-pen pen)))
+
+    (define/override (on-paint)
+      (draw-lines))
     
     (super-new)))
 
 ; Make the drawing area
 (define canvas (new my-canvas% [parent frame]))
-(send (send canvas get-dc) set-pen pen) 
+(send (send canvas get-dc) set-pen default-pen) 
 
 (define menu-bar (new menu-bar% [parent frame]))
 
