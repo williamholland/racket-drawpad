@@ -73,15 +73,30 @@
       (set! lines '())
       (send this refresh))
 
+    (define/public (save-canvas-svg)
+      (let ((filename (put-file)))
+        (when filename
+          (let ((dc (new svg-dc% [width (send this get-width)]
+                         [height (send this get-height)]
+                         [output filename]
+                         [exists 'replace])))
+            (send dc start-doc "message")
+            (send dc start-page)
+            (for ([l lines])
+              (send l draw dc offset-coord))
+            (send dc end-page)
+            (send dc end-doc)))))
+
     (define/private (draw-lines)
       (let ((dc (send this get-dc)))
         (for ([l lines])
           (send l draw dc offset-coord))))
 
     (define/public (undo)
-      (set! lines (cdr lines))
-                 (send this refresh)
-                 (draw-lines))
+      (when (not (empty? lines))
+        (set! lines (cdr lines))
+        (send this refresh)
+        (draw-lines)))
 
     (define/private (screen-coord-to-absolute coord)
       (coord-subtract coord offset-coord))
@@ -145,6 +160,8 @@
         (let ((key-code (send event get-key-code)))
           (cond ((equal? key-code #\z)
                  (undo))
+                ((equal? key-code #\s)
+                 (save-canvas-svg))
                 ((equal? key-code #\=)
                  (set! pen (new pen%
                                 [color (send pen get-color)]
@@ -185,6 +202,13 @@
               (send canvas clear-lines))])
 
 (new menu-item%
+  [label "&Save"]
+  [parent file-menu]
+  [shortcut #\s]
+  [callback (λ (m event)
+              (send canvas save-canvas-svg))])
+
+(new menu-item%
   [label "E&xit"]
   [parent file-menu]
   [callback (λ (m event)
@@ -196,7 +220,8 @@
     [parent menu-bar]))
 
 (new menu-item%
-  [label "Undo (Ctrl+Z)"]
+  [label "Undo"]
+  [shortcut #\z]
   [parent edit-menu]
   [callback (λ (m event)
               (send canvas undo))])
