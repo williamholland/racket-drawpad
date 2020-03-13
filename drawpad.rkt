@@ -16,7 +16,7 @@
 
 (define pen (new pen% [color "BLACK"] [width 1]))
 
-(define frame (new frame% [label "Drawing"]
+(define frame (new frame% [label "Drawpad"]
                    [min-width 300]
                    [min-height 300]))
 
