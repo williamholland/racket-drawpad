@@ -44,5 +44,24 @@
 ; Make the drawing area
 (define canvas (new my-canvas% [parent frame]))
 
+(define menu-bar (new menu-bar% [parent frame]))
+
+(define file-menu
+  (new menu%
+    [label "&File"]
+    [parent menu-bar]))
+
+(new menu-item%
+  [label "&New"]
+  [parent file-menu]
+  [callback (λ (m event)
+              (send canvas refresh))])
+
+(new menu-item%
+  [label "E&xit"]
+  [parent file-menu]
+  [callback (λ (m event)
+              (send frame show #f))])
+
 ; Show the frame
 (send frame show #t)
