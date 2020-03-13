@@ -30,7 +30,7 @@
   (class canvas%
 
     ; #f when mouse is not down, otherwise stores the most recent previous coord of the pen
-    (define drawing-state #f)
+    (field (drawing-state #f))
 
     ; mouse events
     (define/override (on-event event)
