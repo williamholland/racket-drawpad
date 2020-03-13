@@ -9,9 +9,8 @@
                    [min-width 300]
                    [min-height 300]))
 
-;TODO replace with a status bar
-(define msg (new message% [parent frame]
-                          [label "Ready."]))
+(send frame create-status-line)
+(send frame set-status-text "Ready.")
 
 (define my-canvas%
   (class canvas%
@@ -30,13 +29,15 @@
           (set! drawing-state current-coord)))
       (let ((event-type (send event get-event-type)))
         (cond ((equal? event-type 'left-down)
-                 (set! drawing-state (event->coord event)))
+                 (set! drawing-state (event->coord event))
+                 (send frame set-status-text "Drawing..."))
               ((equal? event-type 'left-up)
+               (send frame set-status-text "Ready.")
                (set! drawing-state #f)))))
 
     ; keyboard events
     (define/override (on-char event)
-      (send msg set-label "Canvas keyboard"))
+      (send frame set-status-text "Canvas keyboard."))
     
     (super-new)))
 
