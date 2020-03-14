@@ -28,7 +28,7 @@ jobs:
 
     # Runs a single command using the runners shell
     - name: build the binary
-      run: raco distribute -vv drawpad.rkt
+      run: raco distribute --vv drawpad.rkt
       
     - uses: actions/upload-artifact@v1
       with:
