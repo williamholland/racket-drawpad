@@ -28,9 +28,9 @@ jobs:
 
     # Runs a single command using the runners shell
     - name: build the binary
-      run: raco exe -v drawpad.rkt
+      run: raco exe -v --gui drawpad.rkt
       
     - uses: actions/upload-artifact@v1
       with:
-        name: drawpad
+        name: drawpad-linux-x86_64
         path: ./drawpad
