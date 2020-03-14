@@ -25,12 +25,15 @@ jobs:
     # Runs a single command using the runners shell
     - name: install dependencies
       run: sudo apt install -y racket
+    
+    - name: build the binary
+      run: raco exe --vv drawpad.rkt
 
     # Runs a single command using the runners shell
-    - name: build the binary
-      run: raco distribute --vv drawpad.rkt
+    - name: build the distributable
+      run: raco distribute -v drawpad-linux-x86_64 drawpad
       
     - uses: actions/upload-artifact@v1
       with:
         name: drawpad-linux-x86_64
-        path: ./drawpad
+        path: ./drawpad-linux-x86_64
