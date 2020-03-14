@@ -23,5 +23,9 @@ jobs:
     - uses: actions/checkout@v2
 
     # Runs a single command using the runners shell
+    - name: install dependencies
+      run: sudo apt install -y racket
+
+    # Runs a single command using the runners shell
     - name: build the binary
       run: raco exe -v drawpad.rkt
