@@ -74,7 +74,13 @@
       (send this refresh))
 
     (define/public (save-canvas-svg)
-      (let ((filename (put-file)))
+      (let ((filename (put-file"Save drawpad as"
+                               #f
+                               #f
+                               "drawpad.svg"
+                               ".svg"
+                               '()
+                               '(("SVG" "*.svg") ("Any" "*.*")))))
         (when filename
           (let ((dc (new svg-dc% [width (send this get-width)]
                          [height (send this get-height)]
